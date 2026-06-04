@@ -188,17 +188,14 @@
         { date: "2026-06-04", weight: 75.0, pullups: 1 }
     ];
 
-    // ========== HARDCODED EXERCISE IDs (no pagination needed) ==========
+    // ========== HARDCODED EXERCISE IDs (only those that exist in free API) ==========
     const exerciseIdMap = {
         pushup: "0br45wL",      // push-up inside leg kick
-        row: "lE9H7B4",         // inverted row
-        wall_sit: "GjfDJVw",    // wall sit
-        calf_raise: "0jp9Rlz",  // one leg floor calf raise
-        lat_pull: "V0CMMyW",    // lat pulldown
-        wall_angel: "ePvBqGL"   // wall angel
+        calf_raise: "0jp9Rlz"   // one leg floor calf raise
+        // row, wall_sit, lat_pull, wall_angel do NOT exist in free API
     };
 
-    // ========== LOCAL FALLBACK INSTRUCTIONS ==========
+    // ========== LOCAL FALLBACK INSTRUCTIONS (always works) ==========
     const fallbackInstructions = {
         pushup: ["Place hands slightly wider than shoulder-width.", "Keep feet together, straight line head to heels.", "Lower chest to ~1 inch above ground, elbows at 45°.", "Press up explosively."],
         row: ["Stand inside door frame, grip edges firmly.", "Walk toes forward and lean back with straight spine.", "Squeeze shoulder blades and pull chest to the frame.", "Extend arms slowly under control."],
@@ -208,11 +205,11 @@
         wall_angel: ["Stand with heels, glutes, back, head against wall.", "Arms up in cactus position (90°).", "Slide hands overhead into wide V.", "Elbows back down, keeping contact."]
     };
 
-    // ========== FETCH SINGLE EXERCISE BY ID ==========
+    // ========== FETCH SINGLE EXERCISE BY ID (only if ID exists) ==========
     async function fetchExerciseById(exerciseId) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
             const res = await fetch(`https://oss.exercisedb.dev/api/v1/exercises/${exerciseId}`, {
                 signal: controller.signal,
                 headers: { 'Accept': 'application/json' }
@@ -239,14 +236,17 @@
         }
 
         mediaBox.classList.add('active');
-        mediaBox.innerHTML = `<div style="display:flex; gap:10px; align-items:center;"><div class="loader-dual"></div><span>Loading ExerciseDB data...</span></div>`;
+        mediaBox.innerHTML = `<div style="display:flex; gap:10px; align-items:center;"><div class="loader-dual"></div><span>Loading form data...</span></div>`;
 
         let apiData = null;
         const exerciseId = exerciseIdMap[exerciseType];
+        
+        // Only attempt API call if we have a valid ID for this exercise type
         if (exerciseId) {
             apiData = await fetchExerciseById(exerciseId);
         }
 
+        // If API data is valid, show GIF + instructions; otherwise fallback
         if (apiData && (apiData.gifUrl || (apiData.instructions && apiData.instructions.length))) {
             const gifUrl = apiData.gifUrl;
             let instructions = apiData.instructions;
@@ -263,14 +263,16 @@
                 </div>
             `;
         } else {
+            // Fallback to local instructions (always works)
             const fallback = fallbackInstructions[exerciseType] || ["Maintain good posture", "Control the movement"];
             const fallbackHtml = fallback.map((step, i) => `<div class="step-item"><span class="step-num">${i+1}.</span><span>${escapeHtml(step)}</span></div>`).join('');
+            const missingApiMsg = exerciseId ? "API data unavailable" : "Exercise not available in free API";
             mediaBox.innerHTML = `
-                <div class="api-gif-container" style="background:#0b0f19; justify-content:center; font-size:12px; color:#facc15;">📋 LOCAL CUES</div>
+                <div class="api-gif-container" style="background:#0b0f19; justify-content:center; font-size:12px; color:#facc15;">📋 LOCAL EXPERT CUES</div>
                 <div class="api-instruction-steps">
-                    <strong>🧠 ZERYXO PROTOCOL (Offline)</strong>
+                    <strong>🧠 ZERYXO BIOMECHANICAL PROTOCOL</strong>
                     ${fallbackHtml}
-                    <div class="fallback-message">⚠️ Live ExerciseDB not available. Using built‑in guidance.</div>
+                    <div class="fallback-message">⚠️ ${missingApiMsg}. Using built‑in guidance.</div>
                 </div>
             `;
         }
