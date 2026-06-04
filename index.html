@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Zeryxo | V-Taper Engine + Live ExerciseDB Integration</title>
     <style>
-        /* [STYLES SAME AS BEFORE - KEPT INTACT] */
+        /* ---------- YOUR ORIGINAL STYLES (unchanged) ---------- */
         :root {
             --bg-color: #0f172a;
             --card-bg: #1e293b;
@@ -198,8 +198,93 @@
         { date: "2026-06-04", weight: 75.0, pullups: 1 }
     ];
 
-    // ---------- ROBUST API HANDLER WITH SILENT FALLBACK ----------
-    // Local fallback instructions (always works)
+    // ---------- EXERCISE DB MAPPING (auto-fetched with pagination) ----------
+    let exerciseIdMap = new Map();  // key: exercise type (pushup, row, etc.) -> API ID
+    let mapPromise = null;
+
+    const exerciseKeywords = {
+        pushup: ["push up", "push-up", "pushup", "press up"],
+        row: ["inverted row", "bodyweight row", "door row", "australian pull up"],
+        wall_sit: ["wall sit", "wall squat"],
+        calf_raise: ["calf raise", "standing calf raise", "one leg floor calf raise"],
+        lat_pull: ["lat pulldown", "lat pull", "floor pull"],
+        wall_angel: ["wall angel", "scapular slide", "wall slide"]
+    };
+
+    async function fetchAllExercises() {
+        let allExercises = [];
+        let nextUrl = 'https://oss.exercisedb.dev/api/v1/exercises';
+        
+        while (nextUrl) {
+            try {
+                const res = await fetch(nextUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.data && Array.isArray(data.data)) {
+                    allExercises.push(...data.data);
+                }
+                nextUrl = data.next || null;
+            } catch (err) {
+                console.warn('Failed to fetch page:', err);
+                break;
+            }
+        }
+        return allExercises;
+    }
+
+    async function buildExerciseMap() {
+        // Check localStorage cache (valid for 1 day)
+        const cached = localStorage.getItem('zeryxo_exercise_map');
+        const cacheTime = localStorage.getItem('zeryxo_exercise_map_time');
+        if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < 86400000)) {
+            try {
+                const map = JSON.parse(cached);
+                for (let [key, val] of Object.entries(map)) {
+                    exerciseIdMap.set(key, val);
+                }
+                console.log('ExerciseDB map loaded from cache.');
+                return;
+            } catch(e) {}
+        }
+
+        console.log('Fetching ExerciseDB index (may take a few seconds)...');
+        const exercises = await fetchAllExercises();
+        if (!exercises.length) {
+            console.warn('No exercises fetched, using fallback mapping.');
+            return;
+        }
+
+        // Build mapping
+        for (const ex of exercises) {
+            const nameLower = (ex.name || '').toLowerCase();
+            for (const [type, keywords] of Object.entries(exerciseKeywords)) {
+                if (keywords.some(kw => nameLower.includes(kw))) {
+                    if (!exerciseIdMap.has(type)) {
+                        exerciseIdMap.set(type, ex.exerciseId);
+                        console.log(`Mapped ${type} -> ${ex.exerciseId} (${ex.name})`);
+                    }
+                }
+            }
+        }
+
+        // Cache the map
+        const mapObj = {};
+        for (let [k, v] of exerciseIdMap.entries()) mapObj[k] = v;
+        localStorage.setItem('zeryxo_exercise_map', JSON.stringify(mapObj));
+        localStorage.setItem('zeryxo_exercise_map_time', Date.now().toString());
+    }
+
+    // Start building the map in background (does not block UI)
+    mapPromise = buildExerciseMap().catch(err => console.warn('Map building failed:', err));
+
+    async function getExerciseId(type) {
+        if (exerciseIdMap.has(type)) return exerciseIdMap.get(type);
+        // Wait for map to finish building (if still in progress)
+        if (mapPromise) await mapPromise;
+        return exerciseIdMap.get(type) || null;
+    }
+
+    // ---------- LOCAL FALLBACK INSTRUCTIONS ----------
     const fallbackInstructions = {
         pushup: ["Place hands slightly wider than shoulder-width.", "Keep feet together, straight line head to heels.", "Lower chest to ~1 inch above ground, elbows at 45°.", "Press up explosively."],
         row: ["Stand inside door frame, grip edges firmly.", "Walk toes forward and lean back with straight spine.", "Squeeze shoulder blades and pull chest to the frame.", "Extend arms slowly under control."],
@@ -209,44 +294,76 @@
         wall_angel: ["Stand with heels, glutes, back, head against wall.", "Arms up in cactus position (90°).", "Slide hands overhead into wide V.", "Elbows back down, keeping contact."]
     };
 
-    // Hardcoded fallback exercise IDs (known to exist in ExerciseDB free API - example from docs)
-    // These are actual IDs from the oss.exercisedb.dev dataset (verified via browser console on successful fetch)
-    const fallbackIdMap = {
-        pushup: "0001",      // might not work but we'll try; if 404, fallback to instructions
-        row: "0015",
-        wall_sit: "0092",
-        calf_raise: "0006",
-        lat_pull: "0035",
-        wall_angel: "0099"
-    };
-
-    // We'll skip the index fetch entirely because it's failing consistently.
-    // Instead, we'll try to fetch each exercise directly using the hardcoded IDs.
-    // If that fails, we use local fallback. This satisfies the requirement.
-    
-    async function fetchExerciseById(exerciseType) {
-        const exerciseId = fallbackIdMap[exerciseType];
-        if (!exerciseId) return null;
+    async function fetchExerciseDetails(exerciseId) {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
-            const response = await fetch(`https://oss.exercisedb.dev/api/v1/exercises/${exerciseId}`, {
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            const res = await fetch(`https://oss.exercisedb.dev/api/v1/exercises/${exerciseId}`, {
                 signal: controller.signal,
                 headers: { 'Accept': 'application/json' }
             });
             clearTimeout(timeoutId);
-            if (!response.ok) return null;
-            const data = await response.json();
-            // Validate structure
-            if (data && (data.gifUrl || data.instructions)) return data;
-            return null;
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data;
         } catch (err) {
-            console.debug(`API fetch for ${exerciseType} failed, using fallback.`);
+            console.debug(`API fetch failed for ID ${exerciseId}:`, err);
             return null;
         }
     }
 
-    // ---------- RENDER & UI (unchanged from original except toggleFormInstructions) ----------
+    // ---------- CORE FORM CHECK BUTTON ----------
+    async function toggleFormInstructions(event, exerciseType, idx) {
+        event.stopPropagation();
+        const mediaBox = document.getElementById(`media-box-${idx}`);
+        if (!mediaBox) return;
+
+        if (mediaBox.classList.contains('active')) {
+            mediaBox.classList.remove('active');
+            return;
+        }
+
+        mediaBox.classList.add('active');
+        mediaBox.innerHTML = `<div style="display:flex; gap:10px; align-items:center;"><div class="loader-dual"></div><span>Loading ExerciseDB data...</span></div>`;
+
+        let apiData = null;
+        try {
+            const exerciseId = await getExerciseId(exerciseType);
+            if (exerciseId) {
+                apiData = await fetchExerciseDetails(exerciseId);
+            }
+        } catch (e) { /* silent */ }
+
+        if (apiData && (apiData.gifUrl || (apiData.instructions && apiData.instructions.length))) {
+            const gifUrl = apiData.gifUrl;
+            let instructions = apiData.instructions;
+            if (!instructions || !Array.isArray(instructions)) instructions = ["Focus on controlled form"];
+            const gifHtml = (gifUrl && typeof gifUrl === 'string' && gifUrl.startsWith('http'))
+                ? `<div class="api-gif-container"><img src="${gifUrl}" alt="ExerciseDB form" loading="lazy" onerror="this.src='https://placehold.co/140x140/1e293b/38bdf8?text=GIF+Error'"></div>`
+                : `<div class="api-gif-container">🎥 No GIF</div>`;
+            const stepsHtml = instructions.map((step, i) => `<div class="step-item"><span class="step-num">${i+1}.</span><span>${escapeHtml(step)}</span></div>`).join('');
+            mediaBox.innerHTML = `
+                ${gifHtml}
+                <div class="api-instruction-steps">
+                    <strong>🏋️ LIVE FORM GUIDE (ExerciseDB)</strong>
+                    ${stepsHtml}
+                </div>
+            `;
+        } else {
+            const fallback = fallbackInstructions[exerciseType] || ["Maintain good posture", "Control the movement"];
+            const fallbackHtml = fallback.map((step, i) => `<div class="step-item"><span class="step-num">${i+1}.</span><span>${escapeHtml(step)}</span></div>`).join('');
+            mediaBox.innerHTML = `
+                <div class="api-gif-container" style="background:#0b0f19; justify-content:center; font-size:12px; color:#facc15;">📋 LOCAL CUES</div>
+                <div class="api-instruction-steps">
+                    <strong>🧠 ZERYXO PROTOCOL (Offline)</strong>
+                    ${fallbackHtml}
+                    <div class="fallback-message">⚠️ Live ExerciseDB not available. Using built‑in guidance.</div>
+                </div>
+            `;
+        }
+    }
+
+    // ---------- ALL YOUR ORIGINAL UI FUNCTIONS (unchanged) ----------
     function renderCalendar() {
         const titleEl = document.getElementById('calendar-title');
         const gridEl = document.getElementById('calendar-days');
@@ -361,65 +478,6 @@
 
     function toggleItemCheckbox(element) { element.classList.toggle('completed'); }
 
-    // Core function: fetch from API or fallback to local instructions
-    async function toggleFormInstructions(event, exerciseType, idx) {
-        event.stopPropagation();
-        const mediaBox = document.getElementById(`media-box-${idx}`);
-        if (!mediaBox) return;
-
-        // Close if already open
-        if (mediaBox.classList.contains('active')) {
-            mediaBox.classList.remove('active');
-            return;
-        }
-
-        mediaBox.classList.add('active');
-        mediaBox.innerHTML = `<div style="display:flex; gap:10px; align-items:center;"><div class="loader-dual"></div><span>Fetching ExerciseDB form data...</span></div>`;
-
-        // Try to get live data
-        let apiData = null;
-        try {
-            apiData = await fetchExerciseById(exerciseType);
-        } catch (e) {
-            // silently ignore
-        }
-
-        if (apiData && (apiData.gifUrl || (apiData.instructions && apiData.instructions.length))) {
-            // Success - display API content
-            const gifUrl = apiData.gifUrl;
-            let instructions = apiData.instructions;
-            if (!instructions || !Array.isArray(instructions) || instructions.length === 0) {
-                instructions = ["Focus on controlled form", "Engage target muscles", "Maintain full range of motion"];
-            }
-            const gifHtml = (gifUrl && typeof gifUrl === 'string' && gifUrl.startsWith('http')) 
-                ? `<div class="api-gif-container"><img src="${gifUrl}" alt="ExerciseDB form" loading="lazy" onerror="this.src='https://placehold.co/140x140/1e293b/38bdf8?text=GIF+Error'"></div>`
-                : `<div class="api-gif-container" style="background:#0f172a; justify-content:center; text-align:center; font-size:11px;">🎥 No GIF</div>`;
-            const stepsHtml = instructions.map((step, i) => `<div class="step-item"><span class="step-num">${i+1}.</span><span>${escapeHtml(step)}</span></div>`).join('');
-            mediaBox.innerHTML = `
-                ${gifHtml}
-                <div class="api-instruction-steps">
-                    <strong>🏋️ LIVE FORM GUIDE (ExerciseDB)</strong>
-                    ${stepsHtml}
-                </div>
-            `;
-        } else {
-            // Fallback to local instructions
-            const fallback = fallbackInstructions[exerciseType] || ["Maintain good posture", "Control the movement", "Breathe steadily"];
-            const fallbackHtml = fallback.map((step, i) => `<div class="step-item"><span class="step-num">${i+1}.</span><span>${escapeHtml(step)}</span></div>`).join('');
-            mediaBox.innerHTML = `
-                <div class="api-gif-container" style="background:#0b0f19; justify-content:center; align-items:center; font-size:12px; color:#facc15;">
-                    📋 LOCAL EXPERT CUES
-                </div>
-                <div class="api-instruction-steps">
-                    <strong>🧠 ZERYXO BIOMECHANICAL PROTOCOL</strong>
-                    ${fallbackHtml}
-                    <div class="fallback-message">⚠️ Live ExerciseDB unreachable (network/CORS/ID mismatch). Using built‑in expert guidance. Your training continues uninterrupted.</div>
-                </div>
-            `;
-        }
-    }
-
-    // ---------- METRICS & PERSISTENCE (unchanged) ----------
     function saveMetrics(event) {
         event.preventDefault();
         const w = parseFloat(document.getElementById('input-weight').value);
@@ -467,7 +525,7 @@
         }
     }
 
-    // Full routines database (preserved from original)
+    // ---------- ROUTINES DATABASE (FULLY INTACT) ----------
     const routinesDatabase = {
         1: {
             home: [
@@ -527,13 +585,15 @@
         }
     };
 
-    // Initialize
+    // ---------- INITIALIZATION ----------
     window.onload = function() {
         document.getElementById('selected-date-label').innerText = `Selected Date: ${selectedDateStr}`;
         renderCalendar();
         updateExercises();
         updateDashboardMetrics();
         renderMetricsHistory();
+        // Preload exercise mapping in background (so first click is fast)
+        mapPromise.catch(() => {});
     };
 </script>
 </body>
