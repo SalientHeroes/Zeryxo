@@ -5,18 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Zeryxo | V-Taper Engine + Live ExerciseDB Integration</title>
     <style>
-        /* ---------- YOUR ORIGINAL STYLES (unchanged) ---------- */
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --accent-hover: #7dd3fc;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --success: #34d399;
-            --border: #334155;
-            --error-border: #f97316;
-        }
+        /* [All your original styles remain exactly the same - omitted for brevity] */
+        /* Paste your full CSS here (same as before) */
+        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent-color: #38bdf8; --accent-hover: #7dd3fc; --text-main: #f8fafc; --text-muted: #94a3b8; --success: #34d399; --border: #334155; --error-border: #f97316; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; }
         .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px; }
@@ -95,6 +86,7 @@
 <body>
 
 <div class="container">
+    <!-- Exactly the same HTML structure as before - keep everything -->
     <header>
         <h1>⚡ ZERYXO PROTOCOL</h1>
         <p>1-Year Home Transformation • Live ExerciseDB Form Engine</p>
@@ -189,7 +181,7 @@
 <script>
     // ---------- GLOBALS ----------
     let currentYear = 2026;
-    let currentMonth = 5; 
+    let currentMonth = 5;
     let selectedDateStr = new Date().toISOString().split('T')[0];
     let activeRoutineTab = 'home';
 
@@ -198,8 +190,8 @@
         { date: "2026-06-04", weight: 75.0, pullups: 1 }
     ];
 
-    // ---------- EXERCISE DB MAPPING (auto-fetched with pagination) ----------
-    let exerciseIdMap = new Map();  // key: exercise type (pushup, row, etc.) -> API ID
+    // ---------- EXERCISE DB MAPPING (with offset pagination) ----------
+    let exerciseIdMap = new Map();
     let mapPromise = null;
 
     const exerciseKeywords = {
@@ -211,29 +203,35 @@
         wall_angel: ["wall angel", "scapular slide", "wall slide"]
     };
 
-    async function fetchAllExercises() {
+    async function fetchAllExercisesWithOffset() {
+        const limit = 100; // Max per page
+        let offset = 0;
         let allExercises = [];
-        let nextUrl = 'https://oss.exercisedb.dev/api/v1/exercises';
-        
-        while (nextUrl) {
+        let hasMore = true;
+
+        while (hasMore) {
+            const url = `https://oss.exercisedb.dev/api/v1/exercises?limit=${limit}&offset=${offset}`;
             try {
-                const res = await fetch(nextUrl);
+                const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 if (data.data && Array.isArray(data.data)) {
                     allExercises.push(...data.data);
+                    offset += limit;
+                    // Stop if we got fewer than limit (last page)
+                    if (data.data.length < limit) hasMore = false;
+                } else {
+                    hasMore = false;
                 }
-                nextUrl = data.next || null;
             } catch (err) {
-                console.warn('Failed to fetch page:', err);
-                break;
+                console.warn('Fetch error at offset', offset, err);
+                hasMore = false;
             }
         }
         return allExercises;
     }
 
     async function buildExerciseMap() {
-        // Check localStorage cache (valid for 1 day)
         const cached = localStorage.getItem('zeryxo_exercise_map');
         const cacheTime = localStorage.getItem('zeryxo_exercise_map_time');
         if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < 86400000)) {
@@ -247,14 +245,13 @@
             } catch(e) {}
         }
 
-        console.log('Fetching ExerciseDB index (may take a few seconds)...');
-        const exercises = await fetchAllExercises();
+        console.log('Fetching all exercises from ExerciseDB (may take 5-10 seconds)...');
+        const exercises = await fetchAllExercisesWithOffset();
         if (!exercises.length) {
             console.warn('No exercises fetched, using fallback mapping.');
             return;
         }
 
-        // Build mapping
         for (const ex of exercises) {
             const nameLower = (ex.name || '').toLowerCase();
             for (const [type, keywords] of Object.entries(exerciseKeywords)) {
@@ -267,24 +264,21 @@
             }
         }
 
-        // Cache the map
         const mapObj = {};
         for (let [k, v] of exerciseIdMap.entries()) mapObj[k] = v;
         localStorage.setItem('zeryxo_exercise_map', JSON.stringify(mapObj));
         localStorage.setItem('zeryxo_exercise_map_time', Date.now().toString());
     }
 
-    // Start building the map in background (does not block UI)
     mapPromise = buildExerciseMap().catch(err => console.warn('Map building failed:', err));
 
     async function getExerciseId(type) {
         if (exerciseIdMap.has(type)) return exerciseIdMap.get(type);
-        // Wait for map to finish building (if still in progress)
         if (mapPromise) await mapPromise;
         return exerciseIdMap.get(type) || null;
     }
 
-    // ---------- LOCAL FALLBACK INSTRUCTIONS ----------
+    // Local fallback instructions (always available)
     const fallbackInstructions = {
         pushup: ["Place hands slightly wider than shoulder-width.", "Keep feet together, straight line head to heels.", "Lower chest to ~1 inch above ground, elbows at 45°.", "Press up explosively."],
         row: ["Stand inside door frame, grip edges firmly.", "Walk toes forward and lean back with straight spine.", "Squeeze shoulder blades and pull chest to the frame.", "Extend arms slowly under control."],
@@ -592,7 +586,7 @@
         updateExercises();
         updateDashboardMetrics();
         renderMetricsHistory();
-        // Preload exercise mapping in background (so first click is fast)
+        // Start fetching mapping in background
         mapPromise.catch(() => {});
     };
 </script>
