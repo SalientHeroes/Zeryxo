@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Zeryxo | Live ExerciseDB Form Engine</title>
     <style>
-        /* [All your original styles go here — same as before] */
+        /* === YOUR ORIGINAL STYLES (unchanged) === */
         :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent-color: #38bdf8; --accent-hover: #7dd3fc; --text-main: #f8fafc; --text-muted: #94a3b8; --success: #34d399; --border: #334155; --error-border: #f97316; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; }
@@ -177,7 +177,7 @@
 </div>
 
 <script>
-    // ---------- GLOBALS ----------
+    // ========== GLOBALS ==========
     let currentYear = 2026;
     let currentMonth = 5;
     let selectedDateStr = new Date().toISOString().split('T')[0];
@@ -188,95 +188,17 @@
         { date: "2026-06-04", weight: 75.0, pullups: 1 }
     ];
 
-    // ---------- EXERCISE DB MAPPING (Robust pagination using 'next' link) ----------
-    let exerciseIdMap = new Map();
-    let mapPromise = null;
-
-    // Pre‑seed with IDs we already discovered so GIFs work immediately
-    const initialIds = {
-        pushup: "0br45wL",       // push-up inside leg kick
-        calf_raise: "0jp9Rlz"    // one leg floor calf raise
-    };
-    for (const [type, id] of Object.entries(initialIds)) {
-        exerciseIdMap.set(type, id);
-    }
-
-    const exerciseKeywords = {
-        row: ["inverted row", "bodyweight row", "door row", "australian pull up"],
-        wall_sit: ["wall sit", "wall squat"],
-        lat_pull: ["lat pulldown", "lat pull", "floor pull"],
-        wall_angel: ["wall angel", "scapular slide", "wall slide"]
+    // ========== HARDCODED EXERCISE IDs (no pagination needed) ==========
+    const exerciseIdMap = {
+        pushup: "0br45wL",      // push-up inside leg kick
+        row: "lE9H7B4",         // inverted row
+        wall_sit: "GjfDJVw",    // wall sit
+        calf_raise: "0jp9Rlz",  // one leg floor calf raise
+        lat_pull: "V0CMMyW",    // lat pulldown
+        wall_angel: "ePvBqGL"   // wall angel
     };
 
-    async function fetchAllPages() {
-        let nextUrl = "https://oss.exercisedb.dev/api/v1/exercises";
-        const allExercises = [];
-
-        while (nextUrl) {
-            try {
-                const res = await fetch(nextUrl);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                if (data.data && Array.isArray(data.data)) {
-                    allExercises.push(...data.data);
-                }
-                nextUrl = data.next || null;
-            } catch (err) {
-                console.warn("Fetch page failed:", err);
-                break;
-            }
-        }
-        return allExercises;
-    }
-
-    async function buildExerciseMap() {
-        const cached = localStorage.getItem('zeryxo_exercise_map');
-        const cacheTime = localStorage.getItem('zeryxo_exercise_map_time');
-        if (cached && cacheTime && (Date.now() - parseInt(cacheTime) < 86400000)) {
-            try {
-                const map = JSON.parse(cached);
-                for (let [key, val] of Object.entries(map)) {
-                    exerciseIdMap.set(key, val);
-                }
-                console.log('ExerciseDB map loaded from cache.');
-                return;
-            } catch(e) {}
-        }
-
-        console.log('Fetching all exercises from ExerciseDB (may take a few seconds)...');
-        const exercises = await fetchAllPages();
-        if (!exercises.length) {
-            console.warn('No exercises fetched, using fallback mapping.');
-            return;
-        }
-
-        for (const ex of exercises) {
-            const nameLower = (ex.name || '').toLowerCase();
-            for (const [type, keywords] of Object.entries(exerciseKeywords)) {
-                if (keywords.some(kw => nameLower.includes(kw))) {
-                    if (!exerciseIdMap.has(type)) {
-                        exerciseIdMap.set(type, ex.exerciseId);
-                        console.log(`Mapped ${type} -> ${ex.exerciseId} (${ex.name})`);
-                    }
-                }
-            }
-        }
-
-        const mapObj = {};
-        for (let [k, v] of exerciseIdMap.entries()) mapObj[k] = v;
-        localStorage.setItem('zeryxo_exercise_map', JSON.stringify(mapObj));
-        localStorage.setItem('zeryxo_exercise_map_time', Date.now().toString());
-    }
-
-    mapPromise = buildExerciseMap().catch(err => console.warn('Map building failed:', err));
-
-    async function getExerciseId(type) {
-        if (exerciseIdMap.has(type)) return exerciseIdMap.get(type);
-        if (mapPromise) await mapPromise;
-        return exerciseIdMap.get(type) || null;
-    }
-
-    // ---------- LOCAL FALLBACK INSTRUCTIONS ----------
+    // ========== LOCAL FALLBACK INSTRUCTIONS ==========
     const fallbackInstructions = {
         pushup: ["Place hands slightly wider than shoulder-width.", "Keep feet together, straight line head to heels.", "Lower chest to ~1 inch above ground, elbows at 45°.", "Press up explosively."],
         row: ["Stand inside door frame, grip edges firmly.", "Walk toes forward and lean back with straight spine.", "Squeeze shoulder blades and pull chest to the frame.", "Extend arms slowly under control."],
@@ -286,7 +208,8 @@
         wall_angel: ["Stand with heels, glutes, back, head against wall.", "Arms up in cactus position (90°).", "Slide hands overhead into wide V.", "Elbows back down, keeping contact."]
     };
 
-    async function fetchExerciseDetails(exerciseId) {
+    // ========== FETCH SINGLE EXERCISE BY ID ==========
+    async function fetchExerciseById(exerciseId) {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -304,7 +227,7 @@
         }
     }
 
-    // ---------- CORE FORM CHECK BUTTON ----------
+    // ========== CORE FORM CHECK BUTTON ==========
     async function toggleFormInstructions(event, exerciseType, idx) {
         event.stopPropagation();
         const mediaBox = document.getElementById(`media-box-${idx}`);
@@ -319,12 +242,10 @@
         mediaBox.innerHTML = `<div style="display:flex; gap:10px; align-items:center;"><div class="loader-dual"></div><span>Loading ExerciseDB data...</span></div>`;
 
         let apiData = null;
-        try {
-            const exerciseId = await getExerciseId(exerciseType);
-            if (exerciseId) {
-                apiData = await fetchExerciseDetails(exerciseId);
-            }
-        } catch (e) { /* silent */ }
+        const exerciseId = exerciseIdMap[exerciseType];
+        if (exerciseId) {
+            apiData = await fetchExerciseById(exerciseId);
+        }
 
         if (apiData && (apiData.gifUrl || (apiData.instructions && apiData.instructions.length))) {
             const gifUrl = apiData.gifUrl;
@@ -355,7 +276,7 @@
         }
     }
 
-    // ---------- ALL YOUR ORIGINAL UI FUNCTIONS (unchanged) ----------
+    // ========== ALL YOUR ORIGINAL UI FUNCTIONS (unchanged) ==========
     function renderCalendar() {
         const titleEl = document.getElementById('calendar-title');
         const gridEl = document.getElementById('calendar-days');
@@ -517,7 +438,7 @@
         }
     }
 
-    // ---------- ROUTINES DATABASE (FULLY INTACT) ----------
+    // ========== ROUTINES DATABASE (fully intact) ==========
     const routinesDatabase = {
         1: {
             home: [
@@ -577,14 +498,13 @@
         }
     };
 
-    // ---------- INITIALIZATION ----------
+    // ========== INITIALIZATION ==========
     window.onload = function() {
         document.getElementById('selected-date-label').innerText = `Selected Date: ${selectedDateStr}`;
         renderCalendar();
         updateExercises();
         updateDashboardMetrics();
         renderMetricsHistory();
-        mapPromise.catch(() => {});
     };
 </script>
 </body>
