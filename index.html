@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V-Taper & Pull-Up Architect v3.5 (Netlify Stream)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --accent-hover: #7dd3fc;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #34d399;
+            --border: #334155;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; }
+        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px; }
+        header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        header h1 { font-size: 26px; color: var(--text-main); margin-bottom: 5px; }
+        header p { color: var(--text-muted); font-size: 14px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .card h2 { font-size: 16px; color: var(--accent-color); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .stat-value { font-size: 28px; font-weight: bold; }
+        .stat-desc { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+        .calendar-section { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .calendar-section { grid-template-columns: 1fr; } }
+        .calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .weekday-label { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+        .cal-day { background-color: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+        .cal-day:hover { border-color: var(--accent-color); background-color: rgba(56, 189, 248, 0.05); }
+        .cal-day.empty { background: transparent; border: none; cursor: default; }
+        .cal-day.today { border-color: var(--accent-color); box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+        .cal-day.workout-home { background-color: rgba(56, 189, 248, 0.2); border-color: var(--accent-color); }
+        .cal-day.workout-play { background-color: rgba(52, 211, 153, 0.2); border-color: var(--success); }
+        .day-num { font-weight: 600; }
+        .day-mark { font-size: 9px; margin-top: 2px; font-weight: bold; }
+        .workout-home .day-mark { color: var(--accent-color); }
+        .workout-play .day-mark { color: var(--success); }
+
+        .log-options { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .log-opt-btn { padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text-main); text-align: left; cursor: pointer; font-size: 14px; }
+        .log-opt-btn:hover { background: rgba(255,255,255,0.05); }
+
+        .tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 15px; font-weight: 600; padding: 8px 16px; cursor: pointer; border-radius: 6px; }
+        .tab-btn.active { background-color: var(--accent-color); color: var(--bg-color); }
+
+        .phase-selector-wrapper { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        select { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+
+        .exercise-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+        .exercise-item { background-color: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 5px; cursor: pointer; transition: all 0.2s; }
+        .exercise-item.completed { border-color: var(--success); background-color: rgba(52, 211, 153, 0.02); opacity: 0.6; }
+        .exercise-header-row { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 15px; }
+        .exercise-left-block { display: flex; align-items: center; gap: 15px; flex: 1; }
+        .checkbox { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--text-muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .completed .checkbox { border-color: var(--success); background-color: var(--success); }
+        .completed .checkbox::after { content: "✓"; color: var(--bg-color); font-weight: bold; font-size: 14px; }
+        .exercise-title { font-size: 16px; font-weight: 600; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+        .completed .exercise-title { text-decoration: line-through; color: var(--text-muted); }
+        .exercise-target { background-color: rgba(56, 189, 248, 0.15); color: var(--accent-color); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 2px; }
+        .completed .exercise-target { background-color: rgba(52, 211, 153, 0.1); color: var(--success); }
+        .exercise-desc { color: var(--text-muted); font-size: 13px; }
+
+        .info-trigger-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--accent-color); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+        .info-trigger-btn:hover { background: rgba(56, 189, 248, 0.1); border-color: var(--accent-color); color: var(--text-main); }
+
+        /* Media Dropdown Panel */
+        .api-media-box { background: rgba(0,0,0,0.2); border-radius: 6px; padding: 15px; display: none; gap: 15px; border: 1px solid var(--border); margin-top: 10px; cursor: default; align-items: center; }
+        .api-media-box.active { display: flex; }
+        @media (max-width: 600px) { .api-media-box.active { flex-direction: column; align-items: flex-start; } }
+        .demo-animation-frame { width: 140px; height: 140px; border-radius: 8px; background: #1e293b; flex-shrink: 0; object-fit: cover; border: 1px solid var(--border); }
+        .instruction-steps { font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .instruction-steps div { border-bottom: 1px dashed rgba(255,255,255,0.03); padding-bottom: 4px; }
+        .instruction-steps strong { color: var(--text-main); margin-bottom: 2px; }
+
+        .metrics-section { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
+        @media (max-width: 768px) { .metrics-section { grid-template-columns: 1fr; } }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 14px; color: var(--text-muted); margin-bottom: 5px; }
+        .form-control { width: 100%; background-color: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-main); padding: 8px 12px; border-radius: 6px; font-size: 15px; }
+        .submit-btn { background-color: var(--accent-color); color: var(--bg-color); border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; }
+        .log-history { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+        .history-item { padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+        .history-item:last-child { border-bottom: none; }
+        
+        .footer-actions { display: flex; justify-content: space-between; margin-top: 10px; }
+        .btn-small { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn-small:hover { border-color: var(--text-main); color: var(--text-main); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>V-TAPER & PULL-UP ARCHITECT</h1>
+        <p>1-Year Home Transformation Engine • Stable Web Animation Streaming</p>
+    </header>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <h2>🎯 Current Weight</h2>
+            <div class="stat-value" id="dash-weight">75.0 kg</div>
+            <div class="stat-desc">Target: 68.0 kg (Glute-Sparing Deficit)</div>
+        </div>
+        <div class="card">
+            <h2>💪 Pull-Up Capacity</h2>
+            <div class="stat-value" id="dash-pullups">1 Rep</div>
+            <div class="stat-desc">Building pure unassisted lats at home</div>
+        </div>
+        <div class="card">
+            <h2>🔥 Active Strategy</h2>
+            <div class="stat-value" id="dash-streak">Phase 1</div>
+            <div class="stat-desc">Dynamic program loading system</div>
+        </div>
+    </div>
+
+    <div class="calendar-section">
+        <div class="card">
+            <div class="calendar-controls">
+                <button class="cal-btn" onclick="changeMonth(-1)">◀</button>
+                <div class="calendar-title" id="calendar-title">June 2026</div>
+                <button class="cal-btn" onclick="changeMonth(1)">▶</button>
+            </div>
+            <div class="calendar-grid" id="calendar-days"></div>
+        </div>
+
+        <div class="card">
+            <h2>📅 Operational Logger</h2>
+            <p class="stat-desc" id="selected-date-label">Select a cell to overwrite status:</p>
+            <div class="log-options">
+                <button class="log-opt-btn" style="border-left: 4px solid var(--accent-color);" onclick="logWorkout('home')">🏠 Complete Scheduled Split</button>
+                <button class="log-opt-btn" style="border-left: 4px solid var(--success);" onclick="logWorkout('playground')">🛝 Complete Supplementary Routine</button>
+                <button class="log-opt-btn" style="border-left: 4px solid #ef4444;" onclick="logWorkout('none')">❌ Clear / Reset Allocation</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="phase-selector-wrapper">
+            <h2>🏋️ Multi-Phase Dynamic Program</h2>
+            <select id="phase-select" onchange="updateExercises()" style="margin-left: auto;">
+                <option value="1">Phase 1 (Months 1-3): Neural Base Setup</option>
+                <option value="2">Phase 2 (Months 4-6): Structural Time-Under-Tension</option>
+                <option value="3">Phase 3 (Months 7-9): Mechanical Loading Shifting</option>
+                <option value="4">Phase 4 (Months 10-12): Backpack Overload Simulation</option>
+            </select>
+        </div>
+
+        <div class="tabs" style="margin-bottom: 15px;">
+            <button class="tab-btn active" id="btn-routine-home" onclick="switchRoutineTab('home')">🏠 Primary Home Protocol (2x/wk)</button>
+            <button class="tab-btn" id="btn-routine-play" onclick="switchRoutineTab('play')">🛝 High Lat Core Protocol (Bi-Weekly Swap)</button>
+        </div>
+
+        <div id="exercise-box"></div>
+    </div>
+
+    <div class="metrics-section">
+        <div class="card">
+            <h2>📈 Record Scale Progress</h2>
+            <form id="metrics-form" onsubmit="saveMetrics(event)">
+                <div class="form-group">
+                    <label>Current Weight (kg)</label>
+                    <input type="number" step="0.1" id="input-weight" class="form-control" required value="75.0">
+                </div>
+                <div class="form-group">
+                    <label>Max Bodyweight Pull-ups</label>
+                    <input type="number" id="input-pullups" class="form-control" required value="1">
+                </div>
+                <button type="submit" class="submit-btn">Update Records</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>📜 Historical Evaluation Log</h2>
+            <div class="log-history" id="metrics-history-list"></div>
+        </div>
+    </div>
+
+    <div class="footer-actions">
+        <button class="btn-small" onclick="exportBackupData()">💾 Export Data Backup JSON</button>
+        <button class="btn-small" onclick="clearAllSystemMemory()" style="color:#ef4444;">🚨 Wipe Storage</button>
+    </div>
+</div>
+
+<script>
+    let currentYear = 2026;
+    let currentMonth = 5; 
+    let selectedDateStr = new Date().toISOString().split('T')[0];
+    let activeRoutineTab = 'home';
+
+    let workoutLogs = JSON.parse(localStorage.getItem('v_taper_workout_logs')) || {};
+    let metricsHistory = JSON.parse(localStorage.getItem('v_taper_metrics_history')) || [
+        { date: "2026-06-04", weight: 75.0, pullups: 1 }
+    ];
+
+    // Swapped completely to unblocked Wikimedia Commons open CDN resources
+    const instructionDatabase = {
+        "pushup": {
+            videoUrl: "https://upload.wikimedia.org/wikipedia/commons/7/7b/Push_up_animation.gif",
+            steps: [
+                "Place hands slightly wider than shoulder-width on the floor, fingers pointing forward.",
+                "Keep your feet together and establish a straight line from your head down to your heels.",
+                "Lower your chest until it sits roughly one inch above the ground, tucking elbows back at a clean 45-degree angle.",
+                "Consciously engage your chest and press up smoothly until arms are fully locked out."
+            ]
+        },
+        "row": {
+            videoUrl: "https://upload.wikimedia.org/wikipedia/commons/e/ee/Bodyweight_Inverted_Row.gif",
+            steps: [
+                "Stand inside a solid door frame and securely grip the outer wooden edges with both hands.",
+                "Walk your toes forward toward the base of the door line and lean your upper body completely back at an angle.",
+                "Keep your core tight, squeeze your shoulder blades back, and pull your chest right up flush to the frame line.",
+                "Slowly extend your arms to lower your body back down under absolute muscular control."
+            ]
+        },
+        "wall_sit": {
+            videoUrl: "https://upload.wikimedia.org/wikipedia/commons/b/b8/Wall_Sit_Exercise_Animation.gif",
+            steps: [
+                "Press your back, shoulders, and head completely flat against a sturdy household vertical wall space.",
+                "Slide your torso down until your hips and knees form a clean 90-degree angle (like a chair).",
+                "Step your feet forward so your knees never cross your toes. This shifts 100% of the load into the quads.",
+                "Keep your hands entirely off your thighs and hold the position until your set duration expires."
+            ]
+        },
+        "calf_raise": {
+            videoUrl: "https://upload.wikimedia.org/wikipedia/commons/3/30/Calf_Raises_Exercise_Animation.gif",
+            steps: [
+                "Stand completely tall on flat flooring with your feet positioned hip-width apart.",
+                "Press down firmly through the balls of your feet and raise your heels as high into the air as possible.",
+                "Hold for 1 full second at the absolute apex to anchor maximum contraction stress inside the calf tissues.",
+                "Slowly drop your heels back to the floor over a controlled 2-second eccentric countdown."
+            ]
+        },
+        "lat_pull": {
+            videoUrl: "https://upload.wikimedia.org/wikipedia/commons/6/61/Floor_Lat_Pulldown_Animation.gif",
+            steps: [
+                "Lie completely face down on a slick floor surface (tile, linoleum, or polished wood work best).",
+                "Extend your arms fully straight overhead, pressing your palms and forearms flat against the flooring.",
+                "Drive your elbows down towards your ribs, pulling your entire upper torso smoothly forward across the floor.",
+                "Focus on letting your lat flanks do the pulling work, then push your body back to the starting point."
+            ]
+        },
+        "wall_angel": {
+            videoUrl: "https://upload.wikimedia.org/wikipedia/commons/d/de/Wall_Slides_Exercise_Animation.gif",
+            steps: [
+                "Stand flat with your heels, glutes, upper back, and head pressed directly flush against a bare wall.",
+                "Raise your arms up into a 'cactus' position at 90-degree angles, ensuring elbows and wrists touch the plaster.",
+                "Slowly slide your hands straight up overhead into a wide V-shape without letting joints peel away from the wall.",
+                "Drive your elbows back down to your sides, fighting to maintain total surface alignment throughout the rep."
+            ]
+        }
+    };
+
+    const routinesDatabase = {
+        1: {
+            home: [
+                { title: "Standard Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Keep elbows tucked to 45 degrees. Widens the shoulder caps to reshape upper silhouette profile." },
+                { title: "Doorway Rows", target: "3 Sets to Failure", type: "row", customDesc: "Grip door frame securely, plant feet deep, lean fully back and drive your sternum into the door edge line." },
+                { title: "Safe Angle Wall Sits", target: "3 Sets × 30-50s", type: "wall_sit", customDesc: "Back flat to wall. Step heels far forward so buttocks take zero load and pressure isolates in your quads." },
+                { title: "Floor Calf Raises", target: "3 Sets × 20 Reps", type: "calf_raise", customDesc: "Smooth elevations onto the balls of your feet. Hold for 1 second at the absolute contraction apex." }
+            ],
+            play: [
+                { title: "Floor Sliding Lat Pull-Downs", target: "3 Sets to Failure", type: "lat_pull", customDesc: "Lie face down on smooth tile flooring. Pull your torso forward using pure back contraction." },
+                { title: "Wall Angels (Scapular Base)", target: "3 Sets × 10 Smooth Reps", type: "wall_angel", customDesc: "Flush joints flat to wall, slide elbows upward slowly into a clean wide V-shape to establish target control." },
+                { title: "Standard Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Identical chest and lateral head stimulation execution parameters." },
+                { title: "Safe Angle Wall Sits", target: "3 Sets × 40s", type: "wall_sit", customDesc: "Maintain quad endurance isolation tracking parameters." }
+            ]
+        },
+        2: {
+            home: [
+                { title: "Stop-Hover Pushups", target: "3 Sets (2s Floor Pause)", type: "pushup", customDesc: "Lower completely down, freeze and hover one inch off the rug for 2 counts, then forcefully press back up." },
+                { title: "Time-Under-Tension Doorway Rows", target: "3 Sets (2s Peak Hold)", type: "row", customDesc: "Sustain a crushing squeeze right against the doorframe for 2 full seconds before resetting body angle." },
+                { title: "Endurance Wall Sits", target: "3 Sets × 60-90s", type: "wall_sit", customDesc: "Prolonged tactical load duration. Cross arms across your chest so quads are forced into self-sustained loading." },
+                { title: "Single-Leg Calf Extensions", target: "3 Sets × 15 Reps Each", type: "calf_raise", customDesc: "Lift one leg entirely off the floor workspace, forcing individual calf architectures to double output." }
+            ],
+            play: [
+                { title: "TUT Sliding Lat Pulls", target: "3 Sets (3s Squeeze)", type: "lat_pull", customDesc: "Hold the maximum forward pull position on the floor for 3 seconds to spark localized lat density spikes." },
+                { title: "Wall Angels (Tension Focus)", target: "3 Sets × 12 Reps", type: "wall_angel", customDesc: "Force wrists and back of hands back hard against plaster continuously to open shoulder mobility channels." },
+                { title: "Stop-Hover Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Integrate the 2-second floor pause parameters." },
+                { title: "Single-Leg Calf Extensions", target: "3 Sets × 15 Reps", type: "calf_raise", customDesc: "Isolate individual lower leg groups completely." }
+            ]
+        },
+        3: {
+            home: [
+                { title: "Decline Foot-Elevated Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Rest toes high on a couch cushion or stable desk chair seat. Drives bodyweight loading directly into high clavicular fibers." },
+                { title: "Deep Deficit Doorway Rows", target: "3 Sets to Failure", type: "row", customDesc: "Advance your shoe placement significantly further underneath the door line plane to maximize angular mass gravity." },
+                { title: "Staggered Leg Wall Sits", target: "3 Sets × 30s Per Side", type: "wall_sit", customDesc: "Kick one foot slightly forward into space. Forces the alternate heel to anchor 80% of entire systemic weight profile." },
+                { title: "Calf Extensions (3s Apex Clamps)", target: "3 Sets × 20 Reps", type: "calf_raise", customDesc: "Drive to high extension, lock up completely, clock 3 manual muscle counts before allowing gravity drop." }
+            ],
+            play: [
+                { title: "Deep Deficit Floor Lat Pulls", target: "3 Sets to Failure", type: "lat_pull", customDesc: "Elevate your chest slightly while pulling across the slick floor plane to demand extreme lateral rear control." },
+                { title: "Wall Angels (Overhand Counter)", target: "3 Sets × 10 Reps", type: "wall_angel", customDesc: "Imagine pressing heavy weights overhead to train muscle activation patterns against the flat wall plane." },
+                { title: "Decline Foot-Elevated Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Isolate high chest vectors using available chairs/sofas." },
+                { title: "Staggered Leg Wall Sits", target: "3 Sets × 30s Per Leg", type: "wall_sit", customDesc: "Asymmetric quad holding strategy to match current progress charts." }
+            ]
+        },
+        4: {
+            home: [
+                { title: "Weighted Backpack Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Strap on a secure pack filled with 3-4 heavy work books to load mechanical pressing vectors." },
+                { title: "Weighted Backpack Doorway Rows", target: "3 Sets to Failure", type: "row", customDesc: "Wear your book-loaded pack on your chest to scale the direct row mechanics without gym cable stacks." },
+                { title: "Weighted Deep Wall Sits", target: "3 Sets × 60s", type: "wall_sit", customDesc: "Rest a heavy container or heavy book pile across your thigh lap deck to challenge lower tier quad capacity." },
+                { title: "Pulse Calf Extensions", target: "3 Sets × 40 Rapid Reps", type: "calf_raise", customDesc: "Execute quick pulse movements in the top half of the extension window to ignite localized lactic clearing." }
+            ],
+            play: [
+                { title: "Weighted Backpack Sliding Pulls", target: "3 Sets to Failure", type: "lat_pull", customDesc: "Execute your floor sliding lat drag routines while keeping your packed bag weighted across your shoulders." },
+                { title: "Wall Angels (Max Endurance)", target: "3 Sets × 15 Reps", type: "wall_angel", customDesc: "Maintain absolute alignment metrics under maximum baseline scapular fatigue protocols." },
+                { title: "Weighted Backpack Pushups", target: "3 Sets to Failure", type: "pushup", customDesc: "Incorporate book pack load parameters directly to standard push lines." },
+                { title: "Weighted Deep Wall Sits", target: "3 Sets × 60s", type: "wall_sit", customDesc: "Enforce heavy quad loading via backpack lap positioning." }
+            ]
+        }
+    };
+
+    window.onload = function() {
+        document.getElementById('selected-date-label').innerText = `Selected Date: ${selectedDateStr}`;
+        renderCalendar();
+        updateExercises();
+        updateDashboardMetrics();
+        renderMetricsHistory();
+    };
+
+    function renderCalendar() {
+        const titleEl = document.getElementById('calendar-title');
+        const gridEl = document.getElementById('calendar-days');
+        gridEl.innerHTML = '';
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        titleEl.innerText = `${monthNames[currentMonth]} ${currentYear}`;
+
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
+            const label = document.createElement('div'); label.className = 'weekday-label'; label.innerText = d; gridEl.appendChild(label);
+        });
+
+        const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+        for(let i = 0; i < firstDayIndex; i++) {
+            const emptyCell = document.createElement('div'); emptyCell.className = 'cal-day empty'; gridEl.appendChild(emptyCell);
+        }
+
+        for(let day = 1; day <= totalDays; day++) {
+            const cell = document.createElement('div'); cell.className = 'cal-day';
+            const monthStr = String(currentMonth + 1).padStart(2, '0');
+            const dayStr = String(day).padStart(2, '0');
+            const dateKey = `${currentYear}-${monthStr}-${dayStr}`;
+            cell.setAttribute('data-date', dateKey);
+            
+            const numSpan = document.createElement('span'); numSpan.className = 'day-num'; numSpan.innerText = day; cell.appendChild(numSpan);
+
+            if(dateKey === selectedDateStr) cell.classList.add('today');
+            if(workoutLogs[dateKey]) {
+                cell.classList.add(workoutLogs[dateKey] === 'home' ? 'workout-home' : 'workout-play');
+                const mark = document.createElement('span'); mark.className = 'day-mark';
+                mark.innerText = workoutLogs[dateKey] === 'home' ? '🏠 Done' : '🛝 Supp';
+                cell.appendChild(mark);
+            }
+
+            cell.onclick = function() {
+                document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('today'));
+                cell.classList.add('today'); selectedDateStr = dateKey;
+                document.getElementById('selected-date-label').innerText = `Selected Date: ${selectedDateStr}`;
+            };
+            gridEl.appendChild(cell);
+        }
+    }
+
+    function changeMonth(dir) {
+        currentMonth += dir;
+        if(currentMonth > 11) { currentMonth = 0; currentYear++; }
+        else if(currentMonth < 0) { currentMonth = 11; currentYear--; }
+        renderCalendar();
+    }
+
+    function logWorkout(type) {
+        if(type === 'none') delete workoutLogs[selectedDateStr];
+        else workoutLogs[selectedDateStr] = type;
+        localStorage.setItem('v_taper_workout_logs', JSON.stringify(workoutLogs));
+        renderCalendar();
+        updateDashboardMetrics();
+    }
+
+    function switchRoutineTab(mode) {
+        activeRoutineTab = mode;
+        document.getElementById('btn-routine-home').classList.remove('active');
+        document.getElementById('btn-routine-play').classList.remove('active');
+        document.getElementById(mode === 'home' ? 'btn-routine-home' : 'btn-routine-play').classList.add('active');
+        updateExercises();
+    }
+
+    function updateExercises() {
+        const selectedPhase = document.getElementById('phase-select').value;
+        const targetContainer = document.getElementById('exercise-box');
+        targetContainer.innerHTML = '';
+
+        const dataset = routinesDatabase[selectedPhase][activeRoutineTab];
+        const listUl = document.createElement('ul');
+        listUl.className = 'exercise-list';
+
+        dataset.forEach((ex, idx) => {
+            const li = document.createElement('li');
+            li.className = 'exercise-item';
+            
+            li.innerHTML = `
+                <div class="exercise-header-row" onclick="toggleItemCheckbox(this.parentNode)">
+                    <div class="exercise-left-block">
+                        <div class="checkbox"></div>
+                        <div class="exercise-details">
+                            <div class="exercise-title">
+                                ${ex.title} 
+                                <span class="exercise-target">${ex.target}</span>
+                            </div>
+                            <div class="exercise-desc">${ex.customDesc}</div>
+                        </div>
+                    </div>
+                    <button class="info-trigger-btn" onclick="toggleFormInstructions(event, '${ex.type}', ${idx})">ℹ️ Form Check</button>
+                </div>
+                <div class="api-media-box" id="media-box-${idx}" onclick="event.stopPropagation()"></div>
+            `;
+            listUl.appendChild(li);
+        });
+
+        targetContainer.appendChild(listUl);
+    }
+
+    function toggleItemCheckbox(element) {
+        element.classList.toggle('completed');
+    }
+
+    function toggleFormInstructions(event, type, idx) {
+        event.stopPropagation();
+        const mediaBox = document.getElementById(`media-box-${idx}`);
+        
+        if(mediaBox.classList.contains('active')) {
+            mediaBox.classList.remove('active');
+            return;
+        }
+        
+        const data = instructionDatabase[type];
+        if(!data) return;
+
+        mediaBox.classList.add('active');
+        let stepsHtml = data.steps.map((step, i) => `<div><strong>Step ${i+1}:</strong> ${step}</div>`).join('');
+        
+        mediaBox.innerHTML = `
+            <img src="${data.videoUrl}" class="demo-animation-frame" alt="Loading animation..." onerror="this.style.display='none'">
+            <div class="instruction-steps">
+                <strong>Execution Mechanics Guide:</strong>
+                ${stepsHtml}
+            </div>
+        `;
+    }
+
+    function saveMetrics(event) {
+        event.preventDefault();
+        const w = parseFloat(document.getElementById('input-weight').value);
+        const p = parseInt(document.getElementById('input-pullups').value);
+        metricsHistory.unshift({ date: new Date().toISOString().split('T')[0], weight: w, pullups: p });
+        localStorage.setItem('v_taper_metrics_history', JSON.stringify(metricsHistory));
+        updateDashboardMetrics();
+        renderMetricsHistory();
+    }
+
+    function updateDashboardMetrics() {
+        if(metricsHistory.length > 0) {
+            document.getElementById('dash-weight').innerText = `${metricsHistory[0].weight.toFixed(1)} kg`;
+            document.getElementById('dash-pullups').innerText = `${metricsHistory[0].pullups} Rep`;
+        }
+    }
+
+    function renderMetricsHistory() {
+        const list = document.getElementById('metrics-history-list');
+        list.innerHTML = '';
+        metricsHistory.forEach(item => {
+            const row = document.createElement('div'); row.className = 'history-item';
+            row.innerHTML = `<strong>${item.date}</strong> <span>Scale: <strong>${item.weight.toFixed(1)} kg</strong></span> <span>Pulls: <strong>${item.pullups} Rep</strong></span>`;
+            list.appendChild(row);
+        });
+    }
+
+    function exportBackupData() {
+        const backupPayload = { workoutLogs, metricsHistory };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `v_taper_backup_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function clearAllSystemMemory() {
+        if (confirm("Wipe all tracking records permanently from this browser memory?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+</script>
+
+</body>
+</html>
