@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>V-Taper & Pull-Up Architect v3.5 (Netlify Stream)</title>
+    <title>V-Taper & Pull-Up Architect v3.6 (Zeryxo Engine)</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -16,15 +16,11 @@
             --border: #334155;
         }
 
-        .test{
-            display:none;
-        }
-
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; line-height: 1.5; }
         .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 25px; }
         header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
-        header h1 { font-size: 26px; color: var(--text-main); margin-bottom: 5px; }
+        header h1 { font-size: 26px; color: var(--text-main); margin-bottom: 5px; letter-spacing: 1px; }
         header p { color: var(--text-muted); font-size: 14px; }
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
@@ -77,14 +73,66 @@
         .info-trigger-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--accent-color); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
         .info-trigger-btn:hover { background: rgba(56, 189, 248, 0.1); border-color: var(--accent-color); color: var(--text-main); }
 
-        /* Media Dropdown Panel */
-        .api-media-box { background: rgba(0,0,0,0.2); border-radius: 6px; padding: 15px; display: none; gap: 15px; border: 1px solid var(--border); margin-top: 10px; cursor: default; align-items: center; }
+        /* Self-Contained High-Performance CSS Graphic Display Modules */
+        .api-media-box { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; display: none; gap: 20px; border: 1px solid var(--border); margin-top: 10px; cursor: default; align-items: center; }
         .api-media-box.active { display: flex; }
         @media (max-width: 600px) { .api-media-box.active { flex-direction: column; align-items: flex-start; } }
-        .demo-animation-frame { width: 140px; height: 140px; border-radius: 8px; background: #1e293b; flex-shrink: 0; object-fit: cover; border: 1px solid var(--border); }
+        
         .instruction-steps { font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .instruction-steps div { border-bottom: 1px dashed rgba(255,255,255,0.03); padding-bottom: 4px; }
         .instruction-steps strong { color: var(--text-main); margin-bottom: 2px; }
+
+        /* The Custom Vector Graphics Container */
+        .vector-visual-container { width: 140px; height: 140px; background: #0b0f19; border-radius: 8px; border: 1px solid var(--border); position: relative; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+        /* Core Vector Components CSS Layout Sheets */
+        .avatar-head { width: 16px; height: 16px; background: var(--accent-color); border-radius: 50%; position: absolute; }
+        .avatar-torso { width: 34px; height: 10px; background: var(--text-main); border-radius: 4px; position: absolute; }
+        .avatar-floor { width: 120px; height: 3px; background: #475569; position: absolute; bottom: 20px; }
+        .avatar-wall { width: 3px; height: 120px; background: #475569; position: absolute; right: 25px; }
+
+        /* CSS Keyframe Motion Layouts for Zero-Equipment Mechanics */
+        /* 1. Pushup Vector */
+        .pushup-visual .avatar-floor { bottom: 35px; }
+        .pushup-visual .avatar-torso { transform: rotate(-5deg); animation: pushup-torso-loop 2s infinite ease-in-out; bottom: 50px; left: 40px; }
+        .pushup-visual .avatar-head { animation: pushup-head-loop 2s infinite ease-in-out; bottom: 58px; left: 74px; }
+        @keyframes pushup-torso-loop { 0%, 100% { bottom: 55px; transform: rotate(-5deg); } 50% { bottom: 39px; transform: rotate(-2deg); } }
+        @keyframes pushup-head-loop { 0%, 100% { bottom: 63px; } 50% { bottom: 45px; } }
+
+        /* 2. Doorway Row Vector */
+        .row-visual .avatar-wall { left: 30px; top: 10px; }
+        .row-visual .avatar-torso { transform: rotate(65deg); animation: row-torso-loop 2s infinite ease-in-out; left: 40px; bottom: 50px; }
+        .row-visual .avatar-head { animation: row-head-loop 2s infinite ease-in-out; left: 51px; bottom: 82px; }
+        @keyframes row-torso-loop { 0%, 100% { left: 40px; transform: rotate(65deg); } 50% { left: 22px; transform: rotate(80deg); } }
+        @keyframes row-head-loop { 0%, 100% { left: 51px; bottom: 82px; } 50% { left: 26px; bottom: 94px; } }
+
+        /* 3. Wall Sit Vector */
+        .wall-sit-visual .avatar-wall { right: 35px; top: 10px; }
+        .wall-sit-visual .avatar-torso { transform: rotate(90deg); left: 63px; bottom: 50px; height: 30px; width: 10px; }
+        .wall-sit-visual .avatar-head { left: 60px; bottom: 84px; }
+        .wall-sit-visual .avatar-legs { width: 30px; height: 8px; background: var(--accent-color); position: absolute; left: 72px; bottom: 45px; border-radius: 4px; animation: wall-sit-loop 2s infinite ease-in-out; }
+        @keyframes wall-sit-loop { 0%, 50%, 100% { background: var(--accent-color); } 25%, 75% { background: #f43f5e; } }
+
+        /* 4. Calf Raise Vector */
+        .calf-visual .avatar-floor { bottom: 25px; }
+        .calf-visual .avatar-torso { transform: rotate(90deg); left: 65px; bottom: 45px; height: 40px; width: 10px; animation: calf-torso-loop 2.5s infinite ease-in-out; }
+        .calf-visual .avatar-head { left: 62px; bottom: 88px; animation: calf-head-loop 2.5s infinite ease-in-out; }
+        @keyframes calf-torso-loop { 0%, 100% { bottom: 40px; } 40%, 60% { bottom: 55px; } }
+        @keyframes calf-head-loop { 0%, 100% { bottom: 83px; } 40%, 60% { bottom: 98px; } }
+
+        /* 5. Floor Sliding Lat Pull Vector */
+        .lat-visual .avatar-floor { bottom: 35px; }
+        .lat-visual .avatar-torso { left: 40px; bottom: 38px; animation: lat-torso-loop 2.2s infinite ease-in-out; }
+        .lat-visual .avatar-head { left: 76px; bottom: 40px; animation: lat-head-loop 2.2s infinite ease-in-out; }
+        @keyframes lat-torso-loop { 0%, 100% { left: 30px; } 50% { left: 55px; } }
+        @keyframes lat-head-loop { 0%, 100% { left: 66px; } 50% { left: 91px; } }
+
+        /* 6. Wall Angel Vector */
+        .angel-visual .avatar-wall { left: 70px; top: 10px; }
+        .angel-visual .avatar-torso { transform: rotate(90deg); left: 66px; bottom: 45px; height: 40px; width: 10px; }
+        .angel-visual .avatar-head { left: 66px; bottom: 88px; }
+        .angel-visual .avatar-arms { width: 35px; height: 6px; background: var(--accent-color); position: absolute; left: 54px; bottom: 75px; border-radius: 3px; transform-origin: right center; animation: angel-arm-loop 2.5s infinite ease-in-out; }
+        @keyframes angel-arm-loop { 0%, 100% { transform: rotate(-40deg); } 50% { transform: rotate(50deg); } }
 
         .metrics-section { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
         @media (max-width: 768px) { .metrics-section { grid-template-columns: 1fr; } }
@@ -105,25 +153,25 @@
 
 <div class="container">
     <header>
-        <h1>V-TAPER & PULL-UP ARCHITECT</h1>
-        <p>1-Year Home Transformation Engine • Stable Web Animation Streaming</p>
+        <h1>ZERYXO PROTOCOL</h1>
+        <p>1-Year Upper Body Transformation Framework • Zero Dependencies • 100% Self-Contained</p>
     </header>
 
     <div class="dashboard-grid">
         <div class="card">
             <h2>🎯 Current Weight</h2>
             <div class="stat-value" id="dash-weight">75.0 kg</div>
-            <div class="stat-desc">Target: 68.0 kg (Glute-Sparing Deficit)</div>
+            <div class="stat-desc">Target: 68.0 kg (Slim lower frame)</div>
         </div>
         <div class="card">
             <h2>💪 Pull-Up Capacity</h2>
             <div class="stat-value" id="dash-pullups">1 Rep</div>
-            <div class="stat-desc">Building pure unassisted lats at home</div>
+            <div class="stat-desc">Building pure unassisted structural baseline lats</div>
         </div>
         <div class="card">
             <h2>🔥 Active Strategy</h2>
             <div class="stat-value" id="dash-streak">Phase 1</div>
-            <div class="stat-desc">Dynamic program loading system</div>
+            <div class="stat-desc">Adaptive vector generation system</div>
         </div>
     </div>
 
@@ -206,11 +254,11 @@
         { date: "2026-06-04", weight: 75.0, pullups: 1 }
     ];
 
-    // Swapped completely to unblocked Wikimedia Commons open CDN resources
-    // Fully local media routing — zero network dependency, 100% stable on Netlify
+    // High performance UI container mapping database
     const instructionDatabase = {
         "pushup": {
-            videoUrl: "assets/animations/pushup.gif",
+            classMarkup: "pushup-visual",
+            vectorElements: `<div class="avatar-floor"></div><div class="avatar-torso"></div><div class="avatar-head"></div>`,
             steps: [
                 "Place hands slightly wider than shoulder-width on the floor, fingers pointing forward.",
                 "Keep your feet together and establish a straight line from your head down to your heels.",
@@ -219,7 +267,8 @@
             ]
         },
         "row": {
-            videoUrl: "assets/animations/row.gif",
+            classMarkup: "row-visual",
+            vectorElements: `<div class="avatar-wall"></div><div class="avatar-torso"></div><div class="avatar-head"></div>`,
             steps: [
                 "Stand inside a solid door frame and securely grip the outer wooden edges with both hands.",
                 "Walk your toes forward toward the base of the door line and lean your upper body completely back at an angle.",
@@ -228,7 +277,8 @@
             ]
         },
         "wall_sit": {
-            videoUrl: "assets/animations/wall_sit.gif",
+            classMarkup: "wall_sit-visual",
+            vectorElements: `<div class="avatar-wall"></div><div class="avatar-torso"></div><div class="avatar-head"></div><div class="avatar-legs"></div>`,
             steps: [
                 "Press your back, shoulders, and head completely flat against a sturdy household vertical wall space.",
                 "Slide your torso down until your hips and knees form a clean 90-degree angle (like a chair).",
@@ -237,7 +287,8 @@
             ]
         },
         "calf_raise": {
-            videoUrl: "assets/animations/calf_raise.gif",
+            classMarkup: "calf-visual",
+            vectorElements: `<div class="avatar-floor"></div><div class="avatar-torso"></div><div class="avatar-head"></div>`,
             steps: [
                 "Stand completely tall on flat flooring with your feet positioned hip-width apart.",
                 "Press down firmly through the balls of your feet and raise your heels as high into the air as possible.",
@@ -246,7 +297,8 @@
             ]
         },
         "lat_pull": {
-            videoUrl: "assets/animations/lat_pull.gif",
+            classMarkup: "lat-visual",
+            vectorElements: `<div class="avatar-floor"></div><div class="avatar-torso"></div><div class="avatar-head"></div>`,
             steps: [
                 "Lie completely face down on a slick floor surface (tile, linoleum, or polished wood work best).",
                 "Extend your arms fully straight overhead, pressing your palms and forearms flat against the flooring.",
@@ -255,7 +307,8 @@
             ]
         },
         "wall_angel": {
-            videoUrl: "assets/animations/wall_angel.gif",
+            classMarkup: "angel-visual",
+            vectorElements: `<div class="avatar-wall"></div><div class="avatar-torso"></div><div class="avatar-head"></div><div class="avatar-arms"></div>`,
             steps: [
                 "Stand flat with your heels, glutes, upper back, and head pressed directly flush against a bare wall.",
                 "Raise your arms up into a 'cactus' position at 90-degree angles, ensuring elbows and wrists touch the plaster.",
@@ -453,10 +506,13 @@
         mediaBox.classList.add('active');
         let stepsHtml = data.steps.map((step, i) => `<div><strong>Step ${i+1}:</strong> ${step}</div>`).join('');
         
+        // Renders vector containers natively with absolute stability
         mediaBox.innerHTML = `
-            <img src="${data.videoUrl}" class="demo-animation-frame" alt="Loading animation..." onerror="this.style.display='none'">
+            <div class="vector-visual-container ${data.classMarkup}">
+                ${data.vectorElements}
+            </div>
             <div class="instruction-steps">
-                <strong>Execution Mechanics Guide:</strong>
+                <strong>Zeryxo Form Vector Guide:</strong>
                 ${stepsHtml}
             </div>
         `;
